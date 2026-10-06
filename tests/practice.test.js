@@ -59,3 +59,13 @@ test('AI errors never expose upstream keys, and valid structured STAR is accepte
     global.fetch=async()=>({ok:false,status:401});res=response();await handler({method:'POST',headers:{},body:{action:'star',text:'I led a launch.'}},res);assert.equal(res.code,502);assert.ok(!JSON.stringify(res.body).includes('unit-test'));
   } finally {global.fetch=fetchBefore;if(keyBefore)process.env.OPENAI_API_KEY=keyBefore;else delete process.env.OPENAI_API_KEY;}
 });
+test('quota errors are distinguished from temporary rate limits without exposing provider details',async()=>{
+  const oldFetch=global.fetch,oldKey=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='unit-test-key';
+  try {
+    for(const [code,expected] of [['insufficient_quota','AI_QUOTA_EXCEEDED'],['rate_limit_exceeded','AI_RATE_LIMITED']]){
+      global.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code,message:'private provider details'}})});
+      const res=response();await handler({method:'POST',headers:{'x-forwarded-for':'quota-test'},body:{action:'star',text:'I led a launch last year.'}},res);
+      assert.equal(res.code,429);assert.equal(res.body.code,expected);assert.ok(!JSON.stringify(res.body).includes('private provider details'));
+    }
+  }finally{global.fetch=oldFetch;if(oldKey)process.env.OPENAI_API_KEY=oldKey;else delete process.env.OPENAI_API_KEY;}
+});
