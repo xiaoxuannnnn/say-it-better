@@ -1,56 +1,132 @@
-import React,{useMemo,useRef,useState} from 'react';import{createRoot}from'react-dom/client';import{Mic,ChevronRight,ChevronLeft,Heart,Shuffle,Lightbulb,Bookmark,Home,RotateCcw,Square}from'lucide-react';import'./style.css';
-const Q=[
-['P&G-style','Tell me about a time when you set a challenging goal and successfully achieved it.','Goal → challenge → actions → measurable result','One challenging goal I set for myself was...',['set an ambitious target','break the goal down into milestones','stay focused on the end result']],
-['P&G-style','Tell me about a time when you took the lead and helped a team achieve a goal.','Situation → your leadership → alignment → result','One example that comes to mind is when I took the lead on...',['take ownership of','align the team around a shared goal','keep everyone moving in the same direction']],
-['P&G-style','Tell me about a time when you had to make a decision with incomplete information.','Context → missing information → judgment → risk → result','I once had to make a decision before we had all the information we wanted.',['make a judgment call','work with the information available','manage the downside risk']],
-['P&G-style','Tell me about a time when you had to work with limited time or resources.','Constraint → priority → trade-off → execution → result','We were working under a very tight timeline, so I first...',['work under tight constraints','focus on the highest-impact tasks','make a deliberate trade-off']],
-['P&G-style','Tell me about a time when you had a disagreement or conflict with someone on your team.','Difference → shared goal → evidence → resolution','I first tried to understand whether we disagreed on the goal, the facts, or the solution.',['bring the discussion back to the shared objective','make the trade-off explicit','reach alignment']],
-['P&G-style','Tell me about a time when you had to persuade someone to support your idea.','Stakeholder → concern → evidence → influence → outcome','To get their support, I first tried to understand what mattered most to them.',['address their key concern','build a case with evidence','gain stakeholder buy-in']],
-['P&G-style','Tell me about a creative or innovative idea you came up with. What impact did it have?','Problem → insight → new approach → validation → impact','The idea came from noticing that the existing approach...',['challenge the existing approach','test the idea on a small scale','create incremental value']],
-['P&G-style','Tell me about a time when you had to learn something new quickly and apply it in practice.','Gap → learning → application → result','I had very limited experience with this area at first, so I...',['get up to speed quickly','learn by doing','turn new knowledge into action']],
-['Marketing','What makes a strong brand?','Positioning → consumer value → differentiation → consistency → growth','To me, a strong brand is one that stands for something clear in consumers’ minds.',['distinctive positioning','build mental availability','reinforce the same brand promise']],
-['Marketing','How would you identify your target audience?','Business goal → segment → need → behavior → validate','I would start by clarifying the business objective and then segment the market based on...',['define the target segment','understand consumer behavior','validate the segment with data']],
-['Marketing','How would you uncover a meaningful consumer insight?','Observation → tension → why → evidence → opportunity','A useful consumer insight goes beyond describing behavior; it explains why that behavior exists.',['uncover the underlying motivation','identify an unmet need','translate insight into an opportunity']],
-['Marketing','What makes a successful marketing campaign?','Objective → audience → insight → message → channel → measurement','I think a successful campaign starts with a very clear business and communication objective.',['a single-minded proposition','reach the right audience','connect creative work to business outcomes']],
-['Marketing','How would you evaluate the effectiveness of a marketing campaign?','Objective → funnel → leading metrics → business metrics → incrementality','I would choose metrics based on the role the campaign is expected to play in the funnel.',['define success upfront','track leading and lagging indicators','measure incremental impact']],
-['Marketing','What would you do if a campaign was underperforming?','Diagnose funnel → isolate bottleneck → hypothesis → test → iterate','I would avoid changing everything at once and first identify where the performance gap comes from.',['diagnose the bottleneck','form a clear hypothesis','iterate based on evidence']],
-['Marketing','How would you differentiate a brand from its competitors?','Category → consumer → competitors → ownable value → proof','I would look for a position that is relevant to consumers, distinctive in the category, and credible for the brand.',['create meaningful differentiation','own a distinctive territory','give consumers a reason to believe']],
-['Marketing','How would you reposition an outdated brand?','Equity → changing consumer → keep/lose → new proposition → test','I would first identify which parts of the existing brand equity are still valuable.',['preserve valuable brand equity','refresh the value proposition','recruit a new generation of consumers']],
-['Marketing','How would you launch a new product in a highly competitive market?','Opportunity → target → proposition → trial → channels → learn','I would begin by being very clear about which consumer problem the product solves better than alternatives.',['define a sharp value proposition','drive product trial','build an integrated launch plan']],
-['Marketing','How would you market an underperforming product?','Diagnose product/price/place/promotion → root cause → action → measure','Before increasing marketing spend, I would diagnose why the product is underperforming.',['identify the root cause','remove the biggest barrier to purchase','avoid treating a product problem as a media problem']],
-['FMCG','How would you increase penetration for an established FMCG brand?','Non-buyers → barriers → occasions → trial → distribution → repeat','For a mature FMCG brand, I would first understand why category buyers are not choosing us.',['increase household penetration','create new consumption occasions','reduce barriers to trial']],
-['FMCG','How would you encourage consumers to switch from a competitor?','Switcher segment → dissatisfaction → superior benefit → proof → trial','I would not target every competitor user. I would focus on consumers with a specific unmet need.',['identify a switching trigger','communicate a superior benefit','lower the perceived switching cost']],
-['FMCG','How would you grow a mature brand?','Penetration → frequency → occasions → innovation → channels','I would look at whether growth is more likely to come from recruiting new buyers or increasing usage occasions.',['expand consumption occasions','recruit light and non-buyers','protect core brand equity']],
-['FMCG','How would you respond if your brand was losing market share?','Category vs brand → segment/channel → competitor → root cause → response','I would first separate category-level changes from brand-specific issues.',['decompose the share loss','identify where the decline is concentrated','respond to the underlying driver']],
-['FMCG','How would you balance short-term sales and long-term brand building?','Role of each → portfolio → shared metrics → guardrails','I see short-term activation and long-term brand building as complementary rather than competing goals.',['balance demand creation and demand capture','protect long-term brand equity','use a full-funnel view']],
-['FMCG','How would you decide which consumer segment to prioritize?','Size → growth → need → right-to-win → economics','I would prioritize a segment based not only on size, but also on strategic fit and our ability to win.',['assess segment attractiveness','evaluate our right to win','prioritize based on potential and fit']],
-['FMCG','How would you market a premium product during an economic downturn?','Core premium user → value beyond price → proof → selective offers','I would avoid competing primarily on price and make the premium value more tangible.',['justify the price premium','reinforce perceived value','protect premium positioning']],
-['Experience','Tell me about the best marketing campaign you have worked on.','Objective → your role → insight → execution → result → learning','One campaign that taught me a lot was...',['translate insight into execution','optimize during delivery','connect campaign performance to business goals']],
-['Experience','Tell me about a campaign that did not perform as expected.','Expectation → signal → diagnosis → change → learning','One campaign did not initially perform as we expected, and the first thing I did was...',['spot an early warning signal','identify the performance gap','turn the setback into a learning']],
-['Experience','Tell me about a time when consumer insights changed your strategy.','Initial assumption → insight → implication → change → impact','We initially assumed that..., but the consumer evidence suggested something different.',['challenge our initial assumption','reframe the problem','adjust the strategy based on consumer evidence']],
-['Experience','Tell me about a data-driven marketing decision you made.','Decision → data → interpretation → action → outcome','I used data not just to report performance, but to decide what we should change next.',['break down performance by','identify the key driver','make a data-informed decision']],
-['Experience','Tell me about a time when you balanced creativity and business results.','Creative goal → business constraint → evaluation → compromise','I tried to protect the core creative idea while being very clear about the business outcome we needed.',['balance creative ambition with commercial impact','set clear guardrails','preserve the core idea']],
-['Experience','Tell me about a time when you worked with multiple stakeholders.','Stakeholders → different incentives → alignment → cadence → result','The main challenge was that different teams were optimizing for different things.',['align cross-functional stakeholders','clarify roles and ownership','create a shared definition of success']],
-['Experience','Tell me about a marketing decision you would make differently today.','Decision → why then → new evidence → what differently → learning','Looking back, I would make one important change to the way I approached...',['with the benefit of hindsight','test the assumption earlier','build a tighter feedback loop']],
-['Random','What makes a good leader?','Direction → judgment → people → ownership → adaptability','To me, a good leader creates clarity and helps other people do their best work.',['create clarity','empower the team','take accountability']],
-['Random','Is data always better than intuition?','Strength of each → context → combine → test','I do not see data and intuition as opposites. The best decisions usually use both.',['use data to challenge assumptions','apply judgment where data is incomplete','validate intuition through testing']],
-['Random','What makes a good product?','Problem → value → usability → differentiation → sustainable business','A good product solves a meaningful problem in a way users find simple and valuable.',['solve a meaningful problem','reduce user friction','create sustainable value']],
-['Random','What is the biggest challenge facing marketers today?','Fragmentation → attention → measurement → trust/AI → response','One major challenge is that consumer attention is increasingly fragmented while measurement is becoming more complex.',['fragmented consumer attention','prove incremental impact','adapt without losing brand consistency']],
-['Random','Should companies prioritize existing customers or new customers?','Goal/stage → retention economics → growth ceiling → portfolio','It depends on the company’s growth stage, but I would avoid treating acquisition and retention as an either-or choice.',['balance acquisition and retention','maximize customer lifetime value','avoid over-relying on one growth lever']],
-['Random','How would you convince your manager that your idea is worth trying?','Goal → evidence → risk → small test → success criteria','I would frame the idea around the business problem rather than around the idea itself.',['build a clear business case','reduce the cost of being wrong','propose a small-scale test']],
-['Random','What makes a good team?','Goal → complementary skills → trust → debate → accountability','A good team has a shared goal, but it does not require everyone to think the same way.',['create psychological safety','disagree constructively','hold each other accountable']],
-['Random','How should a company respond to negative customer feedback?','Listen → classify → urgency → fix → close loop → learn','I would first distinguish between an isolated complaint and a recurring signal.',['identify recurring patterns','close the feedback loop','turn complaints into product insight']],
-['Random','How do you decide what not to do?','Goal → impact → opportunity cost → evidence → say no','Prioritization is as much about deciding what not to do as deciding what to do.',['consider the opportunity cost','focus resources on the highest-impact work','say no with a clear rationale']],
-['Random','What makes an idea innovative?','Novelty × usefulness → problem → adoption → impact','I think innovation requires more than novelty; it has to create meaningful value.',['solve an old problem in a better way','create meaningful user value','turn novelty into adoption']],
-['Marketing','What is more important: brand awareness or conversion?','Objective/stage → awareness enables demand → conversion captures → balance','Neither is universally more important; the right emphasis depends on the growth problem.',['create future demand','capture existing demand','manage the full funnel']],
-['Marketing','How would you design an integrated marketing campaign?','Objective → audience → big idea → channel roles → sequencing → measurement','I would start with one clear consumer idea and define a specific role for each channel.',['build around one organizing idea','define the role of each touchpoint','create a consistent consumer journey']],
-['Marketing','How do you choose the right marketing channels?','Audience behavior → objective → channel strength → economics → experiment','I would choose channels based on where the audience is and what job each channel needs to do.',['match the channel to the objective','consider marginal efficiency','test the channel mix']],
-['Marketing','How would you measure brand strength?','Awareness → consideration → preference → penetration → pricing/loyalty','I would combine perceptual brand metrics with behavioral and commercial outcomes.',['track aided and unaided awareness','measure brand preference','connect brand health to business outcomes']],
-['FMCG','How would you launch a new beverage targeting Gen Z?','Need/occasion → proposition → product truth → culture/channel → trial','I would avoid starting with “Gen Z” as one broad segment and first identify a specific need or occasion.',['define a specific consumption occasion','build cultural relevance','generate trial and social proof']],
-['FMCG','How would you increase purchase frequency for a snack brand?','Current occasions → new occasions → pack/product → availability → habit','I would look for credible new consumption occasions rather than simply asking existing buyers to buy more.',['expand usage occasions','increase physical availability','build habitual consumption']],
-['Experience','Tell me about a time when you received difficult feedback.','Feedback → reaction → clarify → change → result','I try to separate the emotional reaction from the useful signal in the feedback.',['seek specific examples','turn feedback into an action plan','demonstrate improvement']],
-['Experience','Tell me about a time when priorities changed suddenly.','Change → impact → re-prioritize → communicate → deliver','When priorities changed, I first reassessed what was still critical to the final outcome.',['reassess priorities','communicate the trade-offs early','protect the critical path']]
-].map((x,i)=>({id:i+1,cat:x[0],q:x[1],framework:x[2],starter:x[3],expressions:x[4]}));
-function App(){const[c,setC]=useState('All'),[i,setI]=useState(0),[hint,setHint]=useState(0),[saved,setSaved]=useState(()=>JSON.parse(localStorage.getItem('sayit-saved')||'[]')),[recording,setRecording]=useState(false),[transcript,setTranscript]=useState(''),[view,setView]=useState('practice');const rec=useRef(null);const cats=['All','P&G-style','Marketing','FMCG','Experience','Random'];const pool=useMemo(()=>c==='All'?Q:Q.filter(x=>x.cat===c),[c]);const q=pool[i%pool.length];function nav(n){setI((i+n+pool.length)%pool.length);setHint(0);setTranscript('')}function save(e){const n=[...new Set([...saved,e])];setSaved(n);localStorage.setItem('sayit-saved',JSON.stringify(n))}function start(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('当前浏览器不支持直接语音转文字。部署后建议用 Chrome / Safari 最新版，或接入语音 API。');return}if(recording){rec.current?.stop();return}const r=new SR();r.lang='en-US';r.interimResults=true;r.continuous=true;r.onresult=e=>setTranscript([...e.results].map(x=>x[0].transcript).join(' '));r.onend=()=>setRecording(false);rec.current=r;r.start();setRecording(true)}if(view==='saved')return <main><header><b>Say It Better</b><button className="icon" onClick={()=>setView('practice')}><Home/></button></header><section className="saved"><p className="eyebrow">MY EXPRESSIONS</p><h1>Your own business English library.</h1>{saved.length? saved.map((x,k)=><div className="savedrow" key={k}>{x}<button onClick={()=>{const n=saved.filter(y=>y!==x);setSaved(n);localStorage.setItem('sayit-saved',JSON.stringify(n))}}>×</button></div>):<p className="muted">还没有收藏。练题时点表达旁边的心形即可。</p>}</section></main>;
-return <main><header><b>Say It Better</b><button className="icon" onClick={()=>setView('saved')}><Bookmark/></button></header><section className="hero"><p className="eyebrow">BUSINESS MODE</p><h1>Think in business.<br/>Say it in English.</h1><p>Practice one question at a time. Don't memorize answers — build expressions you can reuse.</p></section><div className="cats">{cats.map(x=><button className={c===x?'on':''} onClick={()=>{setC(x);setI(0);setHint(0)}} key={x}>{x}</button>)}</div><article className="card"><div className="meta"><span>{q.cat}</span><span>{i%pool.length+1} / {pool.length}</span></div><h2>{q.q}</h2><p className="instruction">Answer out loud for 60–90 seconds. If you get stuck, reveal help gradually.</p><div className="voice"><button className={recording?'recording':''} onClick={start}>{recording?<Square/>:<Mic/>}<span>{recording?'Stop':'Answer'}</span></button></div>{transcript&&<div className="transcript"><small>YOUR ANSWER</small><p>{transcript}</p><p className="mock">AI correction will plug in here after deployment. V1 keeps the speaking loop usable without an API key.</p></div>}<div className="hintActions"><button onClick={()=>setHint(Math.min(3,hint+1))}><Lightbulb/> I don't know how to say it</button></div>{hint>=1&&<div className="reveal"><small>THINKING FRAMEWORK</small><p>{q.framework}</p></div>}{hint>=2&&<div className="reveal"><small>STARTER SENTENCE</small><p className="english">“{q.starter}”</p></div>}{hint>=3&&<div className="reveal"><small>USEFUL EXPRESSIONS</small>{q.expressions.map(e=><div className="exp" key={e}><span>{e}</span><button onClick={()=>save(e)}><Heart size={17}/></button></div>)}</div>}<div className="nav"><button onClick={()=>nav(-1)}><ChevronLeft/> Prev</button><button onClick={()=>{setI(Math.floor(Math.random()*pool.length));setHint(0);setTranscript('')}}><Shuffle/> Random</button><button className="next" onClick={()=>nav(1)}>Next <ChevronRight/></button></div></article><section className="coming"><span>RESUME MODE</span><b>Coming next</b><p>Upload a résumé → AI breaks down projects → personalized interview questions.</p></section></main>}
+import React, { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Mic, Square, ChevronRight, ChevronLeft, Heart, Shuffle, Lightbulb, Bookmark, Home, Upload, FileText, X } from 'lucide-react';
+import { QUESTIONS } from './questions.js';
+import { STAR_FIELDS, filterQuestions, localStar, localResumeQuestions, readSaved } from './lib/practice.js';
+import { useSpeech } from './lib/useSpeech.js';
+import { extractResume, MAX_RESUME_LENGTH } from './lib/files.js';
+import './style.css';
+
+function App() {
+  const [mode,setMode] = useState('business'), [view,setView] = useState('practice');
+  const [category,setCategory] = useState('All'), [subcat,setSubcat] = useState('All Marketing'), [index,setIndex] = useState(0), [hint,setHint] = useState(0);
+  const [saved,setSaved] = useState(() => { try { return readSaved(window.localStorage); } catch { return []; } });
+  const [answer,setAnswer] = useState(''), [star,setStar] = useState(null), [starBusy,setStarBusy] = useState(false), [starError,setStarError] = useState('');
+  const [language,setLanguage] = useState('en-US');
+  const [ai,setAi] = useState({available:false,provider:'AI',loaded:false}), [useAi,setUseAi] = useState(false);
+  const [resume,setResume] = useState(''), [role,setRole] = useState(''), [fileName,setFileName] = useState(''), [resumeQuestions,setResumeQuestions] = useState([]), [resumeMode,setResumeMode] = useState('local');
+  const [resumeBusy,setResumeBusy] = useState(false), [resumeError,setResumeError] = useState(''), [notice,setNotice] = useState('');
+  const captionRef = useRef(null);
+  const starRequest = useRef(null), resumeRequest = useRef(null), uploadVersion = useRef(0), fileInput = useRef(null);
+  const pool = mode === 'resume' ? resumeQuestions : filterQuestions(QUESTIONS,category,subcat);
+  const question = pool[index % (pool.length || 1)];
+  const speech = useSpeech(text => { setAnswer(text.slice(0,8000)); organize(text.slice(0,8000)); });
+  const locked = speech.recording || speech.starting;
+  useEffect(() => { if (captionRef.current) captionRef.current.scrollTop = captionRef.current.scrollHeight; }, [speech.finalText,speech.interim]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/practice',{signal:controller.signal}).then(r => r.ok ? r.json() : Promise.reject()).then(data => setAi({...data,loaded:true})).catch(() => {if(!controller.signal.aborted)setAi({available:false,provider:'AI',loaded:true});});
+    return () => { controller.abort(); starRequest.current?.abort(); resumeRequest.current?.abort(); uploadVersion.current++; };
+  },[]);
+  async function request(body,controller) {
+    const timer = setTimeout(() => controller.abort('timeout'),55000);
+    try {
+      const response = await fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '请求失败，请重试。');
+      return data;
+    } finally { clearTimeout(timer); }
+  }
+  function invalidateStar() { starRequest.current?.abort(); starRequest.current=null; setStarBusy(false); setStarError(''); }
+  function resetPractice() { speech.reset(); invalidateStar(); setAnswer(''); setStar(null); setHint(0); }
+  function switchMode(next) { resetPractice(); setIndex(0); setMode(next); setView('practice'); }
+  function chooseCategory(next) { resetPractice(); setIndex(0); setCategory(next); setSubcat('All Marketing'); }
+  function navigate(next) { resetPractice(); setIndex((next+pool.length)%pool.length); }
+  async function organize(text = answer) {
+    if (!text.trim()) return;
+    invalidateStar();
+    const local = localStar(text,question?.q); setStar(local);
+    if (!(ai.available && useAi)) return;
+    const controller = new AbortController(); starRequest.current = controller; setStarBusy(true);
+    try {
+      const data = await request({action:'star',text,question:question?.q || ''},controller);
+      if (starRequest.current === controller) setStar(data);
+    } catch (error) {
+      if (starRequest.current === controller && (!controller.signal.aborted || controller.signal.reason==='timeout')) setStarError(error.message || 'AI 超时，可先使用本地整理。');
+    } finally { if(starRequest.current === controller){setStarBusy(false);starRequest.current=null;} }
+  }
+  function save(expression) {
+    const next = [...new Set([...saved,expression])]; setSaved(next);
+    try {localStorage.setItem('sayit-saved',JSON.stringify(next));} catch {setNotice('本次已收藏，但浏览器未允许永久保存。');}
+  }
+  function removeSaved(expression) {
+    const next = saved.filter(x=>x!==expression);setSaved(next);
+    try {localStorage.setItem('sayit-saved',JSON.stringify(next));} catch {setNotice('浏览器未能保存更改。');}
+  }
+  function invalidateResume() {
+    resumeRequest.current?.abort();resumeRequest.current=null;setResumeBusy(false);setResumeError('');setResumeQuestions([]);setIndex(0);resetPractice();
+  }
+  async function upload(file) {
+    if (!file) return;
+    invalidateResume(); const version=++uploadVersion.current;setResumeBusy(true);setFileName('');setResume('');
+    try { const text=await extractResume(file);if(version===uploadVersion.current){setResume(text);setFileName(file.name);} }
+    catch(error){if(version===uploadVersion.current)setResumeError(error.message);}
+    finally {if(version===uploadVersion.current)setResumeBusy(false);if(fileInput.current)fileInput.current.value='';}
+  }
+  async function generateResume(forceLocal=false) {
+    invalidateResume();
+    if(resume.trim().length<40){setResumeError('请至少粘贴一段具体经历（40 字符以上）。');return;}
+    if(!(ai.available&&useAi) || forceLocal){
+      const questions=localResumeQuestions(resume,role);
+      if(!questions.length){setResumeError('请补充一段项目、职责或成果描述，再生成练习题。');return;}
+      setResumeQuestions(questions);setResumeMode('local');return;
+    }
+    const controller=new AbortController();resumeRequest.current=controller;setResumeBusy(true);
+    try {
+      const data=await request({action:'resume',text:resume,role},controller);
+      if(resumeRequest.current===controller){setResumeQuestions(data.questions.map((q,i)=>({...q,id:`resume-ai-${i}`,cat:'Resume'})));setResumeMode('ai');}
+    } catch(error){if(resumeRequest.current===controller && (!controller.signal.aborted||controller.signal.reason==='timeout'))setResumeError(error.message || '生成超时，请重试。');}
+    finally {if(resumeRequest.current===controller){setResumeBusy(false);resumeRequest.current=null;}}
+  }
+  const aiControl = <div className="ai-control">{ai.available ? <label><input type="checkbox" checked={useAi} onChange={e=>{invalidateStar();resumeRequest.current?.abort();resumeRequest.current=null;setResumeBusy(false);setUseAi(e.target.checked);}}/> 使用 {ai.provider} 整理回答 / 生成简历题目 <small>开启后，整理时会发送当前回答；生成题目时会发送确认后的简历文字。不发送原始文件。</small></label> : <p className="small muted">{ai.loaded?'本地模式 · AI 尚未启用。STAR 按关键词归类，简历题目按原文生成模板。':'正在检查 AI 服务…'}</p>}</div>;
+  return <main>
+    <header><button className="brand" onClick={()=>{resetPractice();setView('practice');}}>Say It Better</button><button className="icon" aria-label={view==='saved'?'Back to practice':'My expressions'} onClick={()=>{resetPractice();setView(view==='saved'?'practice':'saved');}}>{view==='saved'?<Home/>:<Bookmark/>}</button></header>
+    {notice&&<p className="status" role="status">{notice}<button className="icon" aria-label="Dismiss" onClick={()=>setNotice('')}><X size={16}/></button></p>}
+    {view==='saved'?<section className="saved"><p className="eyebrow">MY EXPRESSIONS</p><h1>Your own business English library.</h1>{saved.length?saved.map(x=><div className="savedrow" key={x}>{x}<button aria-label={`Remove ${x}`} onClick={()=>removeSaved(x)}>×</button></div>):<p className="muted">还没有收藏。练题时点表达旁边的心形即可。</p>}</section>:<>
+      <nav className="mode-tabs" aria-label="Practice mode"><button className={mode==='business'?'on':''} onClick={()=>switchMode('business')}>Business Mode</button><button className={mode==='resume'?'on':''} onClick={()=>switchMode('resume')}>Resume Mode</button></nav>
+      <section className="hero"><p className="eyebrow">{mode==='business'?'BUSINESS MODE':'RESUME MODE'}</p><h1>{mode==='business'?<>Think in business.<br/>Say it in English.</>:<>Your experience.<br/>Your next interview.</>}</h1><p>{mode==='business'?"Practice one question at a time. Speak, see your words, then shape your story.":'从你的经历出发，一次练好一个项目故事。'}</p></section>
+      {aiControl}
+      {mode==='business'?<>
+        <div className="cats" aria-label="Question categories">{['All','P&G-style','Marketing','Experience','Business Topics'].map(x=><button key={x} aria-pressed={category===(x==='Business Topics'?'Random':x)} className={category===(x==='Business Topics'?'Random':x)?'on':''} onClick={()=>chooseCategory(x==='Business Topics'?'Random':x)}>{x}</button>)}</div>
+        {category==='Marketing'&&<div className="subcategories"><span>Marketing →</span>{['All Marketing','General Marketing','Marketing-FMCG'].map(x=><button key={x} aria-pressed={subcat===x} className={subcat===x?'on':''} onClick={()=>{resetPractice();setIndex(0);setSubcat(x);}}>{x}</button>)}</div>}
+      </>:<section className="resume-panel">
+        <div className="section-heading"><h2>Your résumé</h2>{(resume||resumeBusy)&&<button className="text-button" onClick={()=>{uploadVersion.current++;invalidateResume();setResume('');setRole('');setFileName('');}}>Clear</button>}</div>
+        <label className="upload"><Upload size={20}/><span>{resumeBusy&&!resumeRequest.current?'Reading résumé…':fileName||'Choose PDF, DOCX or TXT'}<small>最多 5 MB · 也可以直接粘贴经历</small></span><input ref={fileInput} type="file" accept=".pdf,.docx,.txt" disabled={resumeBusy} onChange={e=>upload(e.target.files?.[0])}/></label>
+        <label className="field-label" htmlFor="resume-text">确认或编辑简历文字</label><textarea id="resume-text" value={resume} maxLength={MAX_RESUME_LENGTH} placeholder="粘贴项目背景、你的职责、具体行动和结果…" disabled={resumeBusy} onChange={e=>{uploadVersion.current++;invalidateResume();setFileName('');setResume(e.target.value);}} rows={7}/>
+        <p className="small muted">简历只保留在本次页面中，刷新后清除。生成前可删除联系方式等无关信息。</p>
+        <label className="field-label" htmlFor="target-role">目标岗位（可选）</label><input id="target-role" value={role} maxLength={120} placeholder="例如 Brand Manager / 产品经理" disabled={resumeBusy} onChange={e=>{invalidateResume();setRole(e.target.value);}}/>
+        {resumeError&&<p className="error" role="alert">{resumeError}</p>}
+        <div className="button-row"><button className="primary" disabled={resumeBusy||resume.trim().length<40} onClick={()=>generateResume()}>{resumeBusy?'Preparing…':'Generate practice questions'}</button>{resumeError&&ai.available&&useAi&&<button className="text-button" onClick={()=>generateResume(true)}>先用本地模板</button>}</div>
+        {resumeQuestions.length>0&&<p className="small muted">{resumeQuestions.length} 道题 · {resumeMode==='ai'?'AI 根据简历生成':'本地模板，引用下方简历原文'}</p>}
+      </section>}
+      {question&&<article className="card" key={question.id}>
+        <div className="meta"><span>{question.subcat==='Marketing-FMCG'?'Marketing / Marketing-FMCG':question.cat==='Random'?'Business Topics':question.cat}</span><span>{index%pool.length+1} / {pool.length}</span></div>
+        {question.source&&<details className="source" open><summary><FileText size={14}/> From your résumé</summary><p>{question.source}</p></details>}
+        <h2>{question.q}</h2><p className="instruction">Speak for 60–90 seconds. Your words appear below as you talk.</p>
+        <div className="speech-settings"><label htmlFor="speech-language">Speech language</label><select id="speech-language" value={language} disabled={locked} onChange={e=>setLanguage(e.target.value)}><option value="en-US">English</option><option value="zh-CN">中文</option></select></div>
+        <div className="voice"><button disabled={speech.starting} className={speech.recording?'recording':''} onClick={()=>{if(speech.recording)speech.stop();else{invalidateStar();setStar(null);setAnswer('');speech.start(language);}}} aria-label={speech.recording?'Stop recording':'Start recording'}>{speech.recording?<Square/>:<Mic/>}<span>{speech.starting?'Starting…':speech.recording?'Stop':'Answer'}</span></button></div>
+        {(locked||speech.finalText||speech.interim)&&<section className="captions" aria-label="Live captions"><div className="caption-label"><b>CC</b><span>{locked?'LIVE CAPTIONS':'TRANSCRIPT CAPTURED'}</span>{locked&&<span className="live-dot"/>}</div><p ref={captionRef} role="status" aria-live="polite" aria-atomic="true">{speech.finalText}{speech.interim&&<> <span className="interim">{speech.interim}</span></>}{!speech.finalText&&!speech.interim&&'Listening… 开始说话，字幕会显示在这里。'}</p></section>}
+        {speech.error&&<p className="error" role="alert">{speech.error}</p>}
+        {!speech.supported&&<p className="small muted">当前浏览器不支持实时语音字幕，仍可输入回答并整理。</p>}
+        {!locked&&<section className="answer-editor"><label className="field-label" htmlFor="answer-text">YOUR ANSWER · 可修改字幕，也可直接输入</label><textarea id="answer-text" rows={4} maxLength={8000} value={answer} placeholder="Type your answer, or tap Answer to speak…" onChange={e=>{invalidateStar();setStar(null);setAnswer(e.target.value);}}/><div className="button-row"><button className="primary" disabled={!answer.trim()||starBusy} onClick={()=>organize()}>{starBusy?'Organizing…':'Organize with STAR'}</button><span className="small muted">S 情境 → T 任务 → A 行动 → R 结果</span></div></section>}
+        {starError&&<p className="error" role="alert">{starError}</p>}
+        {star&&<section className="star-section" aria-label="STAR answer"><div className="section-heading"><h3>Your STAR story</h3><span className="small muted">{starBusy?'AI 正在整理…':star.mode==='ai'?'AI 整理':'本地关键词归类 · 请核对'}</span></div>{star.note&&<p className="small muted">{star.note}</p>}<div className="star-grid">{STAR_FIELDS.map(([key,letter,label,prompt])=><label className="star-field" key={key}><span><b>{letter}</b>{label}</span><textarea rows={3} aria-label={`STAR ${label}`} value={star[key]} disabled={starBusy} placeholder={prompt} onChange={e=>setStar({...star,[key]:e.target.value,rewritten:'',missing:[]})}/></label>)}</div>{star.unassigned?.length>0&&<div className="unassigned"><b>尚未归类的原话</b><p>{star.unassigned.join(' ')}</p><small>已保留全部内容，可复制到上方对应部分。</small></div>}{star.missing?.length>0&&<div className="missing"><b>下一次补充这些信息</b>{star.missing.map(x=><p key={x}>{x}</p>)}</div>}{star.rewritten&&<div className="reveal"><small>A MORE NATURAL ANSWER</small><p>{star.rewritten}</p></div>}</section>}
+        <div className="hintActions"><button onClick={()=>setHint(Math.min(3,hint+1))}><Lightbulb size={18}/> I don't know how to say it</button></div>
+        {hint>=1&&<div className="reveal"><small>THINKING FRAMEWORK</small><p>{question.framework}</p></div>}{hint>=2&&<div className="reveal"><small>STARTER SENTENCE</small><p className="english">“{question.starter}”</p></div>}{hint>=3&&<div className="reveal"><small>USEFUL EXPRESSIONS</small>{question.expressions.map(expression=><div className="exp" key={expression}><span>{expression}</span><button aria-label={`Save ${expression}`} aria-pressed={saved.includes(expression)} onClick={()=>save(expression)}><Heart size={17} fill={saved.includes(expression)?'currentColor':'none'}/></button></div>)}</div>}
+        <div className="nav"><button onClick={()=>navigate(index-1)}><ChevronLeft/> Prev</button><button onClick={()=>navigate(Math.floor(Math.random()*pool.length))}><Shuffle/> Random</button><button className="next" onClick={()=>navigate(index+1)}>Next <ChevronRight/></button></div>
+      </article>}
+      <footer className="small muted">{mode==='business'?'50 questions. One story at a time.':'Your résumé stays in this tab.'} 语音识别由浏览器提供，可能使用浏览器厂商的在线服务。</footer>
+    </>}
+  </main>;
+}
 createRoot(document.getElementById('root')).render(<App/>);
