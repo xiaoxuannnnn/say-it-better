@@ -1,17 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Mic, Square, ChevronRight, ChevronLeft, Heart, Shuffle, Lightbulb, Bookmark, Home, Upload, FileText, X } from 'lucide-react';
+import { Mic, Square, ChevronRight, ChevronLeft, Heart, Shuffle, Lightbulb, Bookmark, Home, Upload, FileText, X, History } from 'lucide-react';
 import { QUESTIONS } from './questions.js';
 import { STAR_FIELDS, filterQuestions, localStar, localResumeQuestions, readSaved } from './lib/practice.js';
 import { useSpeech } from './lib/useSpeech.js';
 import { extractResume, MAX_RESUME_LENGTH } from './lib/files.js';
+import { readHistory, upsertHistory, writeHistory, polishedSections } from './lib/history.js';
 import './style.css';
 
+function NaturalAnswer({star}) {
+  return <div className="reveal natural-answer"><small>{star.mode==='ai'?'A MORE NATURAL ANSWER · STAR':'YOUR ANSWER · STAR'}</small>{polishedSections(star).map(({key,text},i)=><section className="natural-part" key={key}><h4><b>{STAR_FIELDS[i][1]}</b> {STAR_FIELDS[i][2]} · {['情境','任务','行动','结果'][i]}</h4><p className={text?'':'muted'}>{text || '尚未提及，请补充这一部分。'}</p></section>)}</div>;
+}
 function App() {
   const [mode,setMode] = useState('business'), [view,setView] = useState('practice');
   const [category,setCategory] = useState('All'), [subcat,setSubcat] = useState('All Marketing'), [index,setIndex] = useState(0), [hint,setHint] = useState(0);
   const [saved,setSaved] = useState(() => { try { return readSaved(window.localStorage); } catch { return []; } });
   const [answer,setAnswer] = useState(''), [star,setStar] = useState(null), [starBusy,setStarBusy] = useState(false), [starError,setStarError] = useState('');
+  const [history,setHistory] = useState(() => {try{return readHistory(localStorage);}catch{return [];}});
+  const historyRef = useRef(history), attemptRef = useRef(null);
+  const [historyError,setHistoryError] = useState('');
   const [language,setLanguage] = useState('en-US');
   const [ai,setAi] = useState({available:false,provider:'AI',loaded:false}), [useAi,setUseAi] = useState(false);
   const [resume,setResume] = useState(''), [role,setRole] = useState(''), [fileName,setFileName] = useState(''), [resumeQuestions,setResumeQuestions] = useState([]), [resumeMode,setResumeMode] = useState('local');
@@ -22,6 +29,20 @@ function App() {
   const question = pool[index % (pool.length || 1)];
   const speech = useSpeech(text => { setAnswer(text.slice(0,8000)); organize(text.slice(0,8000)); });
   const locked = speech.recording || speech.starting;
+  function recordAttempt(text, result = star) {
+    if (!question || !text.trim()) return;
+    if (!attemptRef.current) attemptRef.current = {id:crypto.randomUUID(),createdAt:new Date().toISOString()};
+    const next = upsertHistory(historyRef.current,{...attemptRef.current,updatedAt:new Date().toISOString(),mode,question:{q:question.q,cat:question.cat,subcat:question.subcat || '',source:question.source || ''},answer:text,star:result,provider:result?.mode==='ai'?ai.provider:null});
+    historyRef.current=next;setHistory(next);
+    try{writeHistory(localStorage,next);setHistoryError('');}catch{setHistoryError('浏览器未能保存记录（存储空间不足或被禁用）。本次内容仍在页面中，请复制保留。');}
+  }
+  useEffect(() => {
+    if(view==='practice')recordAttempt(locked?[speech.finalText,speech.interim].filter(Boolean).join(' '):answer);
+  },[answer,star,speech.finalText,speech.interim,locked,view]);
+  function deleteAttempt(id) {
+    const next=historyRef.current.filter(x=>x.id!==id);
+    try{writeHistory(localStorage,next);historyRef.current=next;setHistory(next);setHistoryError('');}catch{setHistoryError('无法删除记录，请检查浏览器存储权限。');}
+  }
   useEffect(() => { if (captionRef.current) captionRef.current.scrollTop = captionRef.current.scrollHeight; }, [speech.finalText,speech.interim]);
   useEffect(() => {
     const controller = new AbortController();
@@ -38,7 +59,7 @@ function App() {
     } finally { clearTimeout(timer); }
   }
   function invalidateStar() { starRequest.current?.abort(); starRequest.current=null; setStarBusy(false); setStarError(''); }
-  function resetPractice() { speech.reset(); invalidateStar(); setAnswer(''); setStar(null); setHint(0); }
+  function resetPractice() { recordAttempt(locked?[speech.finalText,speech.interim].filter(Boolean).join(' '):answer); attemptRef.current=null; speech.reset(); invalidateStar(); setAnswer(''); setStar(null); setHint(0); }
   function switchMode(next) { resetPractice(); setIndex(0); setMode(next); setView('practice'); }
   function chooseCategory(next) { resetPractice(); setIndex(0); setCategory(next); setSubcat('All Marketing'); }
   function navigate(next) { resetPractice(); setIndex((next+pool.length)%pool.length); }
@@ -90,9 +111,10 @@ function App() {
   }
   const aiControl = <div className="ai-control">{ai.available ? <label><input type="checkbox" checked={useAi} onChange={e=>{invalidateStar();resumeRequest.current?.abort();resumeRequest.current=null;setResumeBusy(false);setUseAi(e.target.checked);}}/> 使用 {ai.provider} 整理回答 / 生成简历题目 <small>开启后，整理时会发送当前回答；生成题目时会发送确认后的简历文字。不发送原始文件。</small></label> : <p className="small muted">{ai.loaded?'本地模式 · AI 尚未启用。STAR 按关键词归类，简历题目按原文生成模板。':'正在检查 AI 服务…'}</p>}</div>;
   return <main>
-    <header><button className="brand" onClick={()=>{resetPractice();setView('practice');}}>Say It Better</button><button className="icon" aria-label={view==='saved'?'Back to practice':'My expressions'} onClick={()=>{resetPractice();setView(view==='saved'?'practice':'saved');}}>{view==='saved'?<Home/>:<Bookmark/>}</button></header>
+    <header><button className="brand" onClick={()=>{resetPractice();setView('practice');}}>Say It Better</button><div className="header-actions"><button className="history-button" aria-label="Practice history" onClick={()=>{resetPractice();setView('history');}}><History size={18}/> 练习记录</button><button className="icon" aria-label={view==='saved'?'Back to practice':'My expressions'} onClick={()=>{resetPractice();setView(view==='saved'?'practice':'saved');}}>{view==='saved'?<Home/>:<Bookmark/>}</button></div></header>
     {notice&&<p className="status" role="status">{notice}<button className="icon" aria-label="Dismiss" onClick={()=>setNotice('')}><X size={16}/></button></p>}
-    {view==='saved'?<section className="saved"><p className="eyebrow">MY EXPRESSIONS</p><h1>Your own business English library.</h1>{saved.length?saved.map(x=><div className="savedrow" key={x}>{x}<button aria-label={`Remove ${x}`} onClick={()=>removeSaved(x)}>×</button></div>):<p className="muted">还没有收藏。练题时点表达旁边的心形即可。</p>}</section>:<>
+    {historyError&&<p className="error" role="alert">{historyError}</p>}
+    {view==='history'?<section className="history-page"><p className="eyebrow">PRACTICE HISTORY</p><div className="section-heading"><h1>每一次开口，都留下进步。</h1><button className="text-button" onClick={()=>setView('practice')}>返回练习</button></div><p className="small muted">{history.length} 次练习 · 仅保存在当前浏览器，不跨设备同步。清除浏览器数据会删除记录。不保存音频或完整简历。</p>{!history.length?<p className="muted">开始回答后会自动记录；STAR 整理完成后会更新同一条记录。</p>:history.map(item=><details className="history-item" key={item.id}><summary><time>{new Date(item.createdAt).toLocaleString()}</time><strong>{item.question.q}</strong><span>{item.mode==='resume'?'Resume Mode':item.question.subcat || item.question.cat} · {item.star?.mode==='ai'?'AI 已整理':item.star?'本地整理':'回答草稿'}</span></summary><div className="history-content">{item.question.source&&<div className="source"><b>简历依据</b><p>{item.question.source}</p></div>}<small>YOUR ORIGINAL ANSWER</small><p className="original-answer">{item.answer}</p>{item.star&&<><NaturalAnswer star={item.star}/>{item.star.unassigned?.length>0&&<p className="small">未归类原话：{item.star.unassigned.join(' ')}</p>}{item.star.missing?.length>0&&<div className="missing"><b>待补充</b>{item.star.missing.map((x,i)=><p key={i}>{x}</p>)}</div>}{item.star.note&&<p className="small muted">{item.star.note}</p>}</>}<button className="text-button" onClick={()=>{if(window.confirm('删除这次练习记录？此操作无法撤销。'))deleteAttempt(item.id);}}>删除这条记录</button></div></details>)}</section>:view==='saved'?<section className="saved"><p className="eyebrow">MY EXPRESSIONS</p><h1>Your own business English library.</h1>{saved.length?saved.map(x=><div className="savedrow" key={x}>{x}<button aria-label={`Remove ${x}`} onClick={()=>removeSaved(x)}>×</button></div>):<p className="muted">还没有收藏。练题时点表达旁边的心形即可。</p>}</section>:<>
       <nav className="mode-tabs" aria-label="Practice mode"><button className={mode==='business'?'on':''} onClick={()=>switchMode('business')}>Business Mode</button><button className={mode==='resume'?'on':''} onClick={()=>switchMode('resume')}>Resume Mode</button></nav>
       <section className="hero"><p className="eyebrow">{mode==='business'?'BUSINESS MODE':'RESUME MODE'}</p><h1>{mode==='business'?<>Think in business.<br/>Say it in English.</>:<>Your experience.<br/>Your next interview.</>}</h1><p>{mode==='business'?"Practice one question at a time. Speak, see your words, then shape your story.":'从你的经历出发，一次练好一个项目故事。'}</p></section>
       {aiControl}
@@ -103,7 +125,7 @@ function App() {
         <div className="section-heading"><h2>Your résumé</h2>{(resume||resumeBusy)&&<button className="text-button" onClick={()=>{uploadVersion.current++;invalidateResume();setResume('');setRole('');setFileName('');}}>Clear</button>}</div>
         <label className="upload"><Upload size={20}/><span>{resumeBusy&&!resumeRequest.current?'Reading résumé…':fileName||'Choose PDF, DOCX or TXT'}<small>最多 5 MB · 也可以直接粘贴经历</small></span><input ref={fileInput} type="file" accept=".pdf,.docx,.txt" disabled={resumeBusy} onChange={e=>upload(e.target.files?.[0])}/></label>
         <label className="field-label" htmlFor="resume-text">确认或编辑简历文字</label><textarea id="resume-text" value={resume} maxLength={MAX_RESUME_LENGTH} placeholder="粘贴项目背景、你的职责、具体行动和结果…" disabled={resumeBusy} onChange={e=>{uploadVersion.current++;invalidateResume();setFileName('');setResume(e.target.value);}} rows={7}/>
-        <p className="small muted">简历只保留在本次页面中，刷新后清除。生成前可删除联系方式等无关信息。</p>
+        <p className="small muted">完整简历只保留在本次页面中；练习过的题目、引用片段和回答会记录在当前浏览器。生成前可删除无关信息。</p>
         <label className="field-label" htmlFor="target-role">目标岗位（可选）</label><input id="target-role" value={role} maxLength={120} placeholder="例如 Brand Manager / 产品经理" disabled={resumeBusy} onChange={e=>{invalidateResume();setRole(e.target.value);}}/>
         {resumeError&&<p className="error" role="alert">{resumeError}</p>}
         <div className="button-row"><button className="primary" disabled={resumeBusy||resume.trim().length<40} onClick={()=>generateResume()}>{resumeBusy?'Preparing…':'Generate practice questions'}</button>{resumeError&&ai.available&&useAi&&<button className="text-button" onClick={()=>generateResume(true)}>先用本地模板</button>}</div>
@@ -114,18 +136,18 @@ function App() {
         {question.source&&<details className="source" open><summary><FileText size={14}/> From your résumé</summary><p>{question.source}</p></details>}
         <h2>{question.q}</h2><p className="instruction">Speak for 60–90 seconds. Your words appear below as you talk.</p>
         <div className="speech-settings"><label htmlFor="speech-language">Speech language</label><select id="speech-language" value={language} disabled={locked} onChange={e=>setLanguage(e.target.value)}><option value="en-US">English</option><option value="zh-CN">中文</option></select></div>
-        <div className="voice"><button disabled={speech.starting} className={speech.recording?'recording':''} onClick={()=>{if(speech.recording)speech.stop();else{invalidateStar();setStar(null);setAnswer('');speech.start(language);}}} aria-label={speech.recording?'Stop recording':'Start recording'}>{speech.recording?<Square/>:<Mic/>}<span>{speech.starting?'Starting…':speech.recording?'Stop':'Answer'}</span></button></div>
+        <div className="voice"><button disabled={speech.starting} className={speech.recording?'recording':''} onClick={()=>{if(speech.recording)speech.stop();else{recordAttempt(answer);attemptRef.current=null;invalidateStar();setStar(null);setAnswer('');speech.start(language);}}} aria-label={speech.recording?'Stop recording':'Start recording'}>{speech.recording?<Square/>:<Mic/>}<span>{speech.starting?'Starting…':speech.recording?'Stop':'Answer'}</span></button></div>
         {(locked||speech.finalText||speech.interim)&&<section className="captions" aria-label="Live captions"><div className="caption-label"><b>CC</b><span>{locked?'LIVE CAPTIONS':'TRANSCRIPT CAPTURED'}</span>{locked&&<span className="live-dot"/>}</div><p ref={captionRef} role="status" aria-live="polite" aria-atomic="true">{speech.finalText}{speech.interim&&<> <span className="interim">{speech.interim}</span></>}{!speech.finalText&&!speech.interim&&'Listening… 开始说话，字幕会显示在这里。'}</p></section>}
         {speech.error&&<p className="error" role="alert">{speech.error}</p>}
         {!speech.supported&&<p className="small muted">当前浏览器不支持实时语音字幕，仍可输入回答并整理。</p>}
         {!locked&&<section className="answer-editor"><label className="field-label" htmlFor="answer-text">YOUR ANSWER · 可修改字幕，也可直接输入</label><textarea id="answer-text" rows={4} maxLength={8000} value={answer} placeholder="Type your answer, or tap Answer to speak…" onChange={e=>{invalidateStar();setStar(null);setAnswer(e.target.value);}}/><div className="button-row"><button className="primary" disabled={!answer.trim()||starBusy} onClick={()=>organize()}>{starBusy?'Organizing…':'Organize with STAR'}</button><span className="small muted">S 情境 → T 任务 → A 行动 → R 结果</span></div></section>}
         {starError&&<p className="error" role="alert">{starError}</p>}
-        {star&&<section className="star-section" aria-label="STAR answer"><div className="section-heading"><h3>Your STAR story</h3><span className="small muted">{starBusy?'AI 正在整理…':star.mode==='ai'?'AI 整理':'本地关键词归类 · 请核对'}</span></div>{star.note&&<p className="small muted">{star.note}</p>}<div className="star-grid">{STAR_FIELDS.map(([key,letter,label,prompt])=><label className="star-field" key={key}><span><b>{letter}</b>{label}</span><textarea rows={3} aria-label={`STAR ${label}`} value={star[key]} disabled={starBusy} placeholder={prompt} onChange={e=>setStar({...star,[key]:e.target.value,rewritten:'',missing:[]})}/></label>)}</div>{star.unassigned?.length>0&&<div className="unassigned"><b>尚未归类的原话</b><p>{star.unassigned.join(' ')}</p><small>已保留全部内容，可复制到上方对应部分。</small></div>}{star.missing?.length>0&&<div className="missing"><b>下一次补充这些信息</b>{star.missing.map(x=><p key={x}>{x}</p>)}</div>}{star.rewritten&&<div className="reveal"><small>A MORE NATURAL ANSWER</small><p>{star.rewritten}</p></div>}</section>}
+        {star&&<section className="star-section" aria-label="STAR answer"><div className="section-heading"><h3>Your STAR story</h3><span className="small muted">{starBusy?'AI 正在整理…':star.mode==='ai'?'AI 整理':'本地关键词归类 · 请核对'}</span></div>{star.note&&<p className="small muted">{star.note}</p>}<div className="star-grid">{STAR_FIELDS.map(([key,letter,label,prompt])=><label className="star-field" key={key}><span><b>{letter}</b>{label}</span><textarea rows={3} aria-label={`STAR ${label}`} value={star[key]} disabled={starBusy} placeholder={prompt} onChange={e=>setStar({...star,[key]:e.target.value,rewritten:'',missing:[]})}/></label>)}</div>{star.unassigned?.length>0&&<div className="unassigned"><b>尚未归类的原话</b><p>{star.unassigned.join(' ')}</p><small>已保留全部内容，可复制到上方对应部分。</small></div>}{star.missing?.length>0&&<div className="missing"><b>下一次补充这些信息</b>{star.missing.map(x=><p key={x}>{x}</p>)}</div>}{star.rewritten&&<NaturalAnswer star={star}/>}</section>}
         <div className="hintActions"><button onClick={()=>setHint(Math.min(3,hint+1))}><Lightbulb size={18}/> I don't know how to say it</button></div>
         {hint>=1&&<div className="reveal"><small>THINKING FRAMEWORK</small><p>{question.framework}</p></div>}{hint>=2&&<div className="reveal"><small>STARTER SENTENCE</small><p className="english">“{question.starter}”</p></div>}{hint>=3&&<div className="reveal"><small>USEFUL EXPRESSIONS</small>{question.expressions.map(expression=><div className="exp" key={expression}><span>{expression}</span><button aria-label={`Save ${expression}`} aria-pressed={saved.includes(expression)} onClick={()=>save(expression)}><Heart size={17} fill={saved.includes(expression)?'currentColor':'none'}/></button></div>)}</div>}
         <div className="nav"><button onClick={()=>navigate(index-1)}><ChevronLeft/> Prev</button><button onClick={()=>navigate(Math.floor(Math.random()*pool.length))}><Shuffle/> Random</button><button className="next" onClick={()=>navigate(index+1)}>Next <ChevronRight/></button></div>
       </article>}
-      <footer className="small muted">{mode==='business'?'50 questions. One story at a time.':'Your résumé stays in this tab.'} 语音识别由浏览器提供，可能使用浏览器厂商的在线服务。</footer>
+      <p className="small muted history-note">回答自动保存到「练习记录」，仅限当前浏览器；开始新录音或切题会新建一次练习。</p><footer className="small muted">{mode==='business'?'50 questions. One story at a time.':'Your résumé stays in this tab.'} 语音识别由浏览器提供，可能使用浏览器厂商的在线服务。</footer>
     </>}
   </main>;
 }

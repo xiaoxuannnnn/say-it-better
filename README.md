@@ -19,7 +19,7 @@ npm run build
 - Browser SpeechRecognition supplies live final/interim captions in English or Chinese. Stop automatically organizes the captured answer; users may edit the transcript and retry. Switching questions aborts recognition and pending STAR requests. Browser support and recognition network availability vary; typing remains available.
 - STAR = Situation → Task → Action → Result. Local mode sorts original sentences by keywords, preserves unmatched text and flags missing sections. AI mode rewrites only supported facts and explicitly asks for missing information. Hypothetical questions retain hypothetical framing.
 - Resume Mode accepts selectable-text PDF (up to 12 pages), DOCX and TXT, max 5 MB / 18,000 characters, or pasted text. File parsing runs in the browser, with no HTML injection. Scanned PDFs require text pasted separately. Résumés stay in memory only. Local templates quote the experience; AI questions are validated against exact résumé excerpts.
-- Saved expressions stay in localStorage. No résumé or answer is automatically stored there.
+- Saved expressions stay in localStorage. Practice history automatically stores question, quoted résumé excerpt (if applicable), answer and STAR results in this browser. It does not store full résumés or audio and does not sync across devices. Clearing browser data removes history. Each new recording or question starts a new attempt; editing or AI completion updates the same attempt. The history page supports review and per-record deletion.
 
 ## Enable OpenAI
 
@@ -36,3 +36,5 @@ Vercel builds with `npm ci` and `npm run build`; frontend output is `dist`. The 
 `npm test` covers category preservation, final/interim transcript replacement, speech stop/cancel/permission errors, missing STAR facts, quoted résumé sources, saved-data corruption, request/output validation and mocked AI responses. Real microphone accuracy and model output require the user's browser and an active API key.
 
 PDF/DOCX browser parsing uses `pdfjs-dist` and Mammoth's raw-text browser bundle, loaded only when needed. Mammoth's CLI-only argparse/sprintf dependency currently has an npm audit advisory; this app does not invoke its CLI or include argparse in the browser extraction path.
+
+Polished answers are displayed as four labeled STAR sections, using the exact polished section text returned by the model. Server-side `rewritten` is assembled from those sections to prevent a mismatch between the labeled view and the full answer.
