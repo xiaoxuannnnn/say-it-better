@@ -50,10 +50,10 @@ export default async function handler(req, res) {
   try {
     const upstream = await fetch(endpoint, { method:'POST', signal:AbortSignal.timeout(45000), headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'}, body:JSON.stringify({model, store:false, messages:[{role:'system',content:system},{role:'user',content:JSON.stringify({text:body.text,question:body.question || '',targetRole:body.role || ''})}], max_tokens:3000, response_format: provider === 'deepseek' ? {type:'json_object'} : {type:'json_schema',json_schema:{name:isStar?'star_answer':'resume_questions',strict:true,schema:isStar?starSchema:resumeSchema}} }) });
     if (!upstream.ok) {
-      let reason = '';
-      try { const failure = await upstream.json(); reason = failure.error?.code || failure.error?.type || ''; } catch {}
-      if (reason === 'insufficient_quota') return res.status(429).json({code:'AI_QUOTA_EXCEEDED',error:'OpenAI API 额度不足，请网站管理员检查 API 余额和使用限额。原文已保留。'});
-      if (upstream.status === 429) return res.status(429).json({code:'AI_RATE_LIMITED',error:'AI 服务暂时限流，请稍后重试。原文已保留。'});
+      let reason = '', kind = '';
+      try { const failure = await upstream.json(); reason = failure.error?.code || ''; kind = failure.error?.type || ''; } catch {}
+      if (kind === 'insufficient_quota' || ['insufficient_quota','credit_balance_exhausted','organization_spend_limit_exceeded','project_spend_limit_exceeded','organization_usage_limit_exceeded','usage_limit_exceeded','billing_hard_limit_reached'].includes(reason)) return res.status(429).json({code:'AI_QUOTA_EXCEEDED',error:'OpenAI API 额度不足，请网站管理员检查 API 余额和使用限额。原文已保留。'});
+      if (upstream.status === 429) return res.status(429).json({code:reason === 'rate_limit_exceeded' || reason === 'slow_down' ? 'AI_RATE_LIMITED' : 'AI_REQUEST_REJECTED',error:'OpenAI 暂时拒绝请求，请检查 API 使用限额或稍后重试。原文已保留。'});
       return res.status(502).json({code:'AI_UPSTREAM_ERROR',error:'AI 服务暂不可用，请检查服务配置或稍后重试。'});
     }
     const data = await upstream.json();

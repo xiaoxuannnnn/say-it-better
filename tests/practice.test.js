@@ -62,7 +62,7 @@ test('AI errors never expose upstream keys, and valid structured STAR is accepte
 test('quota errors are distinguished from temporary rate limits without exposing provider details',async()=>{
   const oldFetch=global.fetch,oldKey=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='unit-test-key';
   try {
-    for(const [code,expected] of [['insufficient_quota','AI_QUOTA_EXCEEDED'],['rate_limit_exceeded','AI_RATE_LIMITED']]){
+    for(const [code,expected] of [['insufficient_quota','AI_QUOTA_EXCEEDED'],['credit_balance_exhausted','AI_QUOTA_EXCEEDED'],['rate_limit_exceeded','AI_RATE_LIMITED']]){
       global.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code,message:'private provider details'}})});
       const res=response();await handler({method:'POST',headers:{'x-forwarded-for':'quota-test'},body:{action:'star',text:'I led a launch last year.'}},res);
       assert.equal(res.code,429);assert.equal(res.body.code,expected);assert.ok(!JSON.stringify(res.body).includes('private provider details'));
